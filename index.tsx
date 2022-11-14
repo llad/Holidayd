@@ -1,8 +1,10 @@
 import { Hono } from 'hono'
 import { prettyJSON } from 'hono/pretty-json'
 import { Database } from "bun:sqlite";
+import { isEqual, isBefore, isWeekend, add } from 'date-fns'
 import * as dayjs from 'dayjs'
 import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
+import * as holidaysjson from './holidays.json'
 dayjs.extend(isSameOrBefore)
 
 import {
@@ -29,51 +31,59 @@ app.use('*', async (c, next) => {
 })
 
 
-
-const holidays = [dayjs('2022-10-05'), dayjs('2022-10-23')]
-
 function getholidays(): array {
-  return holidays
+  return holidaysjson.default.map(d => new Date(d))
   }
 
-function getbdarray(s: dayjs,e: dayjs): array {
+function getbdarray(start: Date, end: Date, holidays: array): array {
  
-  var i = s.clone()
-  var bds = []
-  const holidays = getholidays()
-  // const holidays = [dayjs('2022-10-05'), dayjs('2022-10-23')]
+  let i = new Date(start.valueOf()) 
+  let bdays = []
 
-  while (i.isSameOrBefore(e)) {
+  while (isBefore(i,end) || isEqual(i,end)) {
 
-    if (i.day() == 0 || i.day() == 6 ) {
-    } else if (holidays.find(element => element.isSame(i))) {
+    if (isWeekend(i)) {
+    } else if (holidays.find(holiday => isEqual(holiday,i))) {
     }
     else {
-      bds.push(i)
+      bdays.push(i)
     }
-    i = i.add(1, 'day')
+    i = add(i, {days: 1})
   }
   
-  return bds;
+  return bdays;
 }
 
+function dateonbd({n, s, e, h}) {
+	const bdarray = getbdarray(s, e, h);
+	return bdarray[n-1];
+	
+}
+
+function bdondate(date, start, end, holidays) {
+	const bdarray = getbdarray(start, end, holidays);
+	return bdarray.findIndex(bd => isEqual(bd, date))+1;
+}
+
+function monthbd(start,n) {
+	let end = start.startOf('month').endOf('month');
+	console.log('range:', start, end)
+	return dateonbd({n:n, s:start, e:end})
+	
+}
 
 
 // routes 
 
 app.get('/', (c) => {
-  const startd = dayjs('2022-09-29')
-  const endd = dayjs('2022-10-29')
-
-  const holidays = [dayjs('2022-10-05'), dayjs('2022-10-23')]
-
+  const start = new Date('2022-09-29')
+  const end = new Date('2022-10-29')
+  const holidays = getholidays()
   
   return c.json({
-    start: startd.format('YYYY-MM-DD'),
-    end: endd.format('YYYY-MM-DD'),
-    between: endd.diff(startd, 'day'),
-    holidays: holidays,
-    array: getbdarray(startd, endd),
+    holidays: getholidays(),
+    getbdarray: getbdarray(start, end, holidays),
+    bdondate: bdondate(new Date('2022-10-18'), start, end, holidays)
   })
 })
 

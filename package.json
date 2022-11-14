@@ -11,6 +11,7 @@
     "template:http": "bun ./templates/http.ts"
   },
   "dependencies": {
+    "date-fns": "^2.29.3",
     "dayjs": "^1.11.6",
     "hono": "^2.3.2"
   }

@@ -1,11 +1,9 @@
 import { Hono } from 'hono'
 import { prettyJSON } from 'hono/pretty-json'
 import { Database } from "bun:sqlite";
-import { isEqual, isBefore, isWeekend, add } from 'date-fns'
-import * as dayjs from 'dayjs'
-import * as isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
+import { eachWorkingDayOfInterval, addWorkingDays, isWorkingDay, getWorkingDate } from './src/index.ts'
 import * as holidaysjson from './holidays.json'
-dayjs.extend(isSameOrBefore)
+
 
 import {
   Content,
@@ -30,60 +28,35 @@ app.use('*', async (c, next) => {
   await next()
 })
 
-
 function getholidays(): array {
   return holidaysjson.default.map(d => new Date(d))
   }
-
-function getbdarray(start: Date, end: Date, holidays: array): array {
- 
-  let i = new Date(start.valueOf()) 
-  let bdays = []
-
-  while (isBefore(i,end) || isEqual(i,end)) {
-
-    if (isWeekend(i)) {
-    } else if (holidays.find(holiday => isEqual(holiday,i))) {
-    }
-    else {
-      bdays.push(i)
-    }
-    i = add(i, {days: 1})
-  }
-  
-  return bdays;
-}
-
-function dateonbd({n, s, e, h}) {
-	const bdarray = getbdarray(s, e, h);
-	return bdarray[n-1];
-	
-}
-
-function bdondate(date, start, end, holidays) {
-	const bdarray = getbdarray(start, end, holidays);
-	return bdarray.findIndex(bd => isEqual(bd, date))+1;
-}
-
-function monthbd(start,n) {
-	let end = start.startOf('month').endOf('month');
-	console.log('range:', start, end)
-	return dateonbd({n:n, s:start, e:end})
-	
-}
 
 
 // routes 
 
 app.get('/', (c) => {
   const start = new Date('2022-09-29')
-  const end = new Date('2022-10-29')
+  const end = new Date('2022-10-31')
   const holidays = getholidays()
   
   return c.json({
-    holidays: getholidays(),
-    getbdarray: getbdarray(start, end, holidays),
-    bdondate: bdondate(new Date('2022-10-18'), start, end, holidays)
+
+   /* eachHolidayOfInterval: eachHolidayOfInterval({
+      start: start,
+      end: end
+    }, holidays), */
+    
+    eachWorkingDayOfInterval: eachWorkingDayOfInterval({
+      start: start,
+      end: end
+    }, holidays), 
+
+    addWorkingDays: addWorkingDays(start, 5, holidays),
+
+    isWorkingDay: isWorkingDay(new Date('2022-10-24'), holidays),
+    getWorkingDate: getWorkingDate(start, 5, holidays),
+    
   })
 })
 
@@ -110,9 +83,6 @@ app.get('/requests/:id', (c) => {
   }
   return c.html(<Content {...props} />)
 })
-
-
-
 
 export default {
   port: 3000,
